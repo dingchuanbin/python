@@ -6,6 +6,7 @@ import xlrd
 import json
 import sys
 import subprocess
+import re
 
 
 class Exceldb(object):
@@ -135,8 +136,8 @@ class Ex_inventory(object):
                 hostvardict[host] = vardict
             return (hostvardict)
 
+exinventory = Ex_inventory('/home/dami/JenkinsHome/workspace/builds/releaseconfig/BBST.xlsx', 'Test')
 if __name__ == "__main__":
-    exinventory = Ex_inventory('/home/dami/JenkinsHome/workspace/builds/releaseconfig/BBST.xlsx', 'Test')
     if len(sys.argv) == 2 and (sys.argv[1] in ['--list','-l']):
         print(json.dumps(exinventory.groupvarslist(), indent=4))
     elif len(sys.argv) == 3 and (sys.argv[1] in ['--list','-l']):
@@ -145,11 +146,16 @@ if __name__ == "__main__":
     elif len(sys.argv) == 3 and (sys.argv[1] == '--host'):
         hostname = sys.argv[2]
         print(json.dumps(exinventory.hostvarslist()[hostname]['hostvars'],indent=4))
+    elif len(sys.argv) == 3 and (sys.argv[1] in ['--assort','-a']):
+        groupname = sys.argv[2]
+        deploypath = exinventory.groupvarslist()[groupname]['vars']['deploypath']
+        pattern = r'tomcat'
+        matchre = re.search(pattern, deploypath)
+        print(matchre)
     elif len(sys.argv) == 2 and (sys.argv[1] in ['-h','--help']):
         sys.stdout.write('''-l or --list  展示inventory all,
                         -l or --list + groupname  展示host和groupvars,
                         --host + hostname  展示hostvars,
                         -h or --help  帮助信息''')
-
 
 
