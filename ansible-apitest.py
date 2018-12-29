@@ -2,7 +2,6 @@
 #-*- coding:utf-8 -*-
 #author:ding
 
-from ansible.plugins.callback.default import CallbackModule
 from ansible.parsing.dataloader import DataLoader
 from ansible.vars.manager import VariableManager
 from ansible.inventory.manager import InventoryManager
@@ -10,13 +9,14 @@ from ansible.playbook.play import Play
 from ansible.executor.task_queue_manager import TaskQueueManager
 from ansible.executor.playbook_executor import PlaybookExecutor
 from collections import namedtuple
+import sys
+
 import os
 
 class AnsibleTask:
     def __init__(self,invent_file,extra_vars={},tagslist=[]):
         self.invent_file = invent_file
         self.passwords = None
-        self.result_callback = CallbackModule()
         Options = namedtuple('Options',
                              ['connection',
                               'remote_user',
@@ -83,10 +83,9 @@ class AnsibleTask:
                 loader = self.loader,
                 options = self.options,
                 passwords = self.passwords,
-                stdout_callback = self.result_callback,
+                # stdout_callback = self.result_callback,
             )
             taskqm.run(play)
-            return self.result_callback
         except:
             raise
         finally:
@@ -94,46 +93,28 @@ class AnsibleTask:
                 taskqm.cleanup()
 
     def exec_playbook(self,playbooks):
-        playbook = PlaybookExecutor(playbooks=playbooks,inventory=self.inventory,
+        pbex = PlaybookExecutor(playbooks=playbooks,inventory=self.inventory,
                                     variable_manager=self.variable_manager,loader=self.loader,
                                     options=self.options,passwords=self.passwords)
-        setattr(getattr(playbook,'_tqm'),'_stdout_callback',self.result_callback)
-        playbook.run()
-        return self.result_callback
+        results=pbex.run()
 
 
-inventory_file = './exceltable.py'
-deployapps='marginservice traderisk exchange bst_admin legaltrade'
-deployapps=deployapps.split(' ')
-# javaapplist=[]
-# webapplist=[]
-for deployapp in deployapps:
-    g_assert = os.popen('python ' + inventory_file + ' -a '+deployapp)
-    g_assert = g_assert.read()
-    if g_assert:
-        extra_vars = {'hostname': deployapp}
-        playbookfile = ['test.yml']
-        tagslist = []
-        task = AnsibleTask(inventory_file, extra_vars, tagslist)
-        task.exec_playbook(playbookfile)
-    else:
-        extra_vars = {'hostname': deployapp}
-        playbookfile = ['test.yml']
-        tagslist = []
-        task = AnsibleTask(inventory_file, extra_vars, tagslist)
-        task.exec_playbook(playbookfile)
+if __name__ == "__main__":
+    inventory_file = './exceltable.py'
+    deployapps=sys.argv[1]
+    tagslist = [sys.argv[2]]
+    deployapps=deployapps.split(' ')
+    for deployapp in deployapps:
+        g_assert = os.popen('python ' + inventory_file + ' -a '+deployapp)
+        g_assert = str(g_assert.read()).strip()
+        if g_assert == 'java':
+            extra_vars = {'hostname': deployapp,'rolename':deployapp}
+            playbookfile = ['javaapps.yml']
+            task = AnsibleTask(inventory_file, extra_vars, tagslist)
+            task.exec_playbook(playbookfile)
+        else:
+            extra_vars = {'hostname': deployapp}
+            playbookfile = ['webapps.yml']
 
-# if javaapplist:
-#     extra_vars = {'hostname': javaapplist}
-#     playbookfile = ['test.yml']
-#     tagslist = []
-#     task = AnsibleTask(inventory_file, extra_vars, tagslist)
-#     task.exec_playbook(playbookfile)
-# if webapplist:
-#     extra_vars = {'hostname': webapplist}
-#     playbookfile = ['test.yml']
-#     tagslist = []
-#     task = AnsibleTask(inventory_file, extra_vars, tagslist)
-#     task.exec_playbook(playbookfile)
-
-
+            task = AnsibleTask(inventory_file, extra_vars, tagslist)
+            task.exec_playbook(playbookfile)

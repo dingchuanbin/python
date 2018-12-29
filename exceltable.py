@@ -151,7 +151,11 @@ if __name__ == "__main__":
         deploypath = exinventory.groupvarslist()[groupname]['vars']['deploypath']
         pattern = r'tomcat'
         matchre = re.search(pattern, deploypath)
-        print(matchre)
+        if matchre:
+            apptype='web'
+        else:
+            apptype='java'
+        print(apptype)
     elif len(sys.argv) == 2 and (sys.argv[1] in ['-h','--help']):
         sys.stdout.write('''-l or --list  展示inventory all,
                         -l or --list + groupname  展示host和groupvars,
