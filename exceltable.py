@@ -136,10 +136,23 @@ class Ex_inventory(object):
                 hostvardict[host] = vardict
             return (hostvardict)
 
-exinventory = Ex_inventory('/home/dami/JenkinsHome/workspace/builds/releaseconfig/BBST.xlsx', 'Test')
+filename='/home/dami/JenkinsHome/workspace/builds/releaseconfig/BBST.xlsx'
+sheetname='huaweiyunUAT'
+
+exinventory = Ex_inventory(filename, sheetname)
 if __name__ == "__main__":
     if len(sys.argv) == 2 and (sys.argv[1] in ['--list','-l']):
         print(json.dumps(exinventory.groupvarslist(), indent=4))
+    elif len(sys.argv) == 2 and (sys.argv[1] in ['--init', '-i']):
+        #cmd = "ansible -i exceltable.py all -m ping"
+        #subprocess.check_call(cmd, shell=True)
+        hostslist = exinventory._hosts
+        for host in hostslist:
+            username = exinventory.hostvarslist()[host]['hostvars']['ansible_ssh_user']
+            password = exinventory.hostvarslist()[host]['hostvars']['ansible_ssh_pass']
+            cmd = "sshpass -p " + password + " rsync -avz /home/" + username + "/.ssh/id_rsa.pub " \
+                  + username + "@" + host + ":/home/" + username + "/.ssh/authorized_keys"
+            subprocess.check_call(cmd, shell=True)
     elif len(sys.argv) == 3 and (sys.argv[1] in ['--list','-l']):
         groupname = sys.argv[2]
         print(json.dumps(exinventory.groupvarslist()[groupname], indent=4))
@@ -149,15 +162,17 @@ if __name__ == "__main__":
     elif len(sys.argv) == 3 and (sys.argv[1] in ['--assort','-a']):
         groupname = sys.argv[2]
         deploypath = exinventory.groupvarslist()[groupname]['vars']['deploypath']
-        pattern = r'tomcat'
-        matchre = re.search(pattern, deploypath)
-        if matchre:
-            apptype='web'
-        else:
-            apptype='java'
-        print(apptype)
+        for i in deploypath.split('/'):
+            pattern = r'-tomcat'
+            matchre = re.search(pattern, deploypath)
+            if matchre:
+                apptype=[i,sheetname]
+            else:
+                apptype=['java',sheetname]
+        print(apptype[0],apptype[1])
     elif len(sys.argv) == 2 and (sys.argv[1] in ['-h','--help']):
         sys.stdout.write('''-l or --list  展示inventory all,
+                        --i or --init  导入证书认证
                         -l or --list + groupname  展示host和groupvars,
                         --host + hostname  展示hostvars,
                         -h or --help  帮助信息''')

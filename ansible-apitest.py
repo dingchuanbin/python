@@ -10,6 +10,7 @@ from ansible.executor.task_queue_manager import TaskQueueManager
 from ansible.executor.playbook_executor import PlaybookExecutor
 from collections import namedtuple
 import sys
+import subprocess
 
 import os
 
@@ -102,18 +103,33 @@ class AnsibleTask:
 if __name__ == "__main__":
     inventory_file = './exceltable.py'
     deployapps=sys.argv[1]
-    tagslist = [sys.argv[2]]
-    deployapps=deployapps.split(' ')
+    tagslist=sys.argv[2]
+    deployapps=deployapps.split(',')
+    tagslist=tagslist.split(',')
     for deployapp in deployapps:
         g_assert = os.popen('python ' + inventory_file + ' -a '+deployapp)
-        g_assert = str(g_assert.read()).strip()
-        if g_assert == 'java':
+        g_assert = str(g_assert.read()).strip().split(' ')
+        s_dir = '../builds/releasebuilds/' + g_assert[1] + '/' + deployapp
+        c_dir = '../builds/releasebuilds/' + g_assert[1] + '_config/' + deployapp
+        if g_assert[0] == 'java':
+            if 'deploy' in tagslist or 'config' in tagslist:
+                cmd = "rsync -avrz --delete %s roles/javaapps/files/" % (s_dir)
+                subprocess.check_call(cmd, shell=True)
+                if os.path.exists(c_dir):
+                    cmd = "rsync -avrz --delete %s roles/javaapps/templates/" % (c_dir)
+                    subprocess.check_call(cmd, shell=True)
             extra_vars = {'hostname': deployapp,'rolename':deployapp}
             playbookfile = ['javaapps.yml']
             task = AnsibleTask(inventory_file, extra_vars, tagslist)
             task.exec_playbook(playbookfile)
         else:
-            extra_vars = {'hostname': deployapp}
+            if 'deploy' in tagslist or 'config' in tagslist:
+                cmd = "rsync -avrz --delete %s roles/webapps/files/" % (s_dir)
+                subprocess.check_call(cmd, shell=True)
+                if os.path.exists(c_dir):
+                    cmd = "rsync -avrz --delete %s roles/webapps/templates/" % (c_dir)
+                    subprocess.check_call(cmd, shell=True)
+            extra_vars = {'hostname': deployapp,'deploypath':g_assert[0],'rolename':deployapp}
             playbookfile = ['webapps.yml']
 
             task = AnsibleTask(inventory_file, extra_vars, tagslist)
