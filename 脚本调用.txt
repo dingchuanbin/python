@@ -1,0 +1,4 @@
+deployapps=${deployapps// /,}
+../rsynctoreleasebuild.py Test $deployapps
+jobname=${jobname// /,}
+./ansible-apitest.py $deployapps $jobname
