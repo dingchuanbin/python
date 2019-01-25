@@ -7,6 +7,7 @@ import shutil
 import subprocess
 import sys
 import xlrd
+import re
 
 
 def open_excel(filename):
@@ -33,59 +34,73 @@ def project_apps(filename,sheetindex='',projectindex='',appindex=''):
             prorownum[ws.cell_value(i,procolnum)] = rownum_hash[ws.cell_value(i,procolnum)]
     proapps = {}
     prorownumindex = list(prorownum.keys())
-    # print(prorownumindex)
     for i in prorownumindex:
-        applist = []
         appstartnum = prorownum[i]
+        appinfodict = {}
         if prorownumindex.index(i)+1 > len(prorownumindex) - 1:
             appendnum = ws.nrows
         else:
             appendnum = prorownum[prorownumindex[prorownumindex.index(i) + 1]]
-        # print(prorownumindex[prorownumindex.index(i)],appstartnum,appendnum)
         for n in range(appstartnum,appendnum):
-            # print(ws.cell_value(n,colnum_hash[appindex]))
-            applist.append(ws.cell_value(n,colnum_hash[appindex]))
+            appinfodict[ws.cell_value(n, colnum_hash[appindex])]=ws.cell_value(n,colnum_hash['appversion'])
             proinfodict = {'version':'','apps':[]}
-            # proapps[prorownumindex[prorownumindex.index(i)]['version'] = ws.cell_value(appstartnum,colnum_hash['version'])
-            # proapps[prorownumindex[prorownumindex.index(i)]] = applist
-            proinfodict['apps'] = applist
+            proinfodict['apps'] = appinfodict
             proinfodict['version'] = ws.cell_value(appstartnum,colnum_hash['version'])
             proapps[prorownumindex[prorownumindex.index(i)]] = proinfodict
     return proapps
-def rsync_app(filename,sheetindex='',srcdir='',targetdir=''):
+def rsyncapp(rsyncsrcdir,app,rsynctargetdir,configid=''):
+    rsyncsrcconfigdir = rsyncsrcdir + '_config'
+    rsynctargetconfigdir = rsynctargetdir + '_config'
+    cmd = "rsync -avrz --delete %s/%s %s/" % (rsyncsrcdir, app, rsynctargetdir)
+    subprocess.check_call(cmd, shell=True)
+    if os.path.exists(rsyncsrcconfigdir + '/' + app):
+        configfiles = os.listdir(rsyncsrcconfigdir + '/' + app)
+        for configfile in configfiles:
+            if configfile.startswith('.'):
+                pass
+            elif configid == '' and len(configfile.split('_')) > 1:
+                pass
+            else:
+                dstconfigname = configfile
+                if configfile.endswith(configid):
+                    dstconfigname = configfile.split('_')[0]
+                cmd = "rsync -avrz --delete %s/%s/%s %s/%s/%s" % (
+                    rsyncsrcconfigdir, app, configfile, rsynctargetconfigdir, app, dstconfigname)
+                subprocess.check_call(cmd, shell=True)
+def allsync(filename,sheetindex='',buildsdir='',releasebuildsdir=''):
     syncapplist = sys.argv[2]
     syncapplist = syncapplist.split(',')
     proinfodict = project_apps(filename, sheetindex, 'project', 'appname')
-    for pro in proinfodict.keys():
-        appslist = proinfodict[pro]['apps']
-        proversion = proinfodict[pro]['version']
-        rsyncsrcdir = srcdir + '/' + pro.lower() + '_' + proversion
-        rsynctargetdir = targetdir + '/' + sheetindex
-        rsyncsrcconfigdir = srcdir + '/' + pro.lower() + '_' + proversion + '_config'
-        rsynctargetconfigdir = targetdir + '/' + sheetindex + '_config'
-        if (syncapplist[0] == 'all') and (len(syncapplist) == 1):
+    #多项目配置拷贝
+    configidlist=['good','bitbullex']
+    for configid in configidlist:
+        if re.match(configid,sheetindex):
+            configid=configid
+        else:
+            configid=''
+    rsynctargetdir = releasebuildsdir + '/' + sheetindex
+    if (syncapplist[0] == 'all') and (len(syncapplist) == 1):
+        for pro in proinfodict.keys():
+            appslist = proinfodict[pro]['apps'].keys()
             for app in appslist:
-                cmd = "rsync -avrz --delete %s/%s %s/" %(rsyncsrcdir,app,rsynctargetdir)
-                subprocess.check_call(cmd, shell=True)
-                if os.path.exists(rsyncsrcconfigdir):
-                    cmd = "rsync -avrz --delete %s/%s %s/" % (rsyncsrcconfigdir,app,rsynctargetconfigdir)
-                    subprocess.check_call(cmd, shell=True)
-        elif (syncapplist[0] == pro) and (len(syncapplist) == 1):
-            for app in appslist:
-                cmd = "rsync -avrz --delete %s/%s %s/" % (rsyncsrcdir, app, rsynctargetdir)
-                subprocess.check_call(cmd, shell=True)
-                if os.path.exists(rsyncsrcconfigdir):
-                    cmd = "rsync -avrz --delete %s/%s %s/" % (rsyncsrcconfigdir, app, rsynctargetconfigdir)
-                    subprocess.check_call(cmd, shell=True)
-            break
-        elif len(syncapplist) >= 1:
-            for app in syncapplist:
+                appversion = proinfodict[pro]['apps'][app]
+                rsyncsrcdir = buildsdir + '/' + pro.lower() + '_' + appversion
+                rsyncapp(rsyncsrcdir,app,rsynctargetdir,configid)
+    elif (syncapplist[0] in proinfodict.keys()) and (len(syncapplist) == 1):
+        pro = syncapplist[0]
+        appslist = proinfodict[pro]['apps'].keys()
+        for app in appslist:
+            appversion = proinfodict[pro]['apps'][app]
+            rsyncsrcdir = buildsdir + '/' + pro.lower() + '_' + appversion
+            rsyncapp(rsyncsrcdir, app, rsynctargetdir, configid)
+    elif len(syncapplist) >= 1:
+        for pro in proinfodict.keys():
+            appslist = proinfodict[pro]['apps'].keys()
+            for app in  syncapplist:
                 if app in appslist:
-                    cmd = "rsync -avrz --delete %s/%s %s/" % (rsyncsrcdir, app, rsynctargetdir)
-                    subprocess.check_call(cmd, shell=True)
-                    if os.path.exists(rsyncsrcconfigdir):
-                        cmd = "rsync -avrz --delete %s/%s %s/" % (rsyncsrcconfigdir, app, rsynctargetconfigdir)
-                        subprocess.check_call(cmd, shell=True)
+                    appversion = proinfodict[pro]['apps'][app]
+                    rsyncsrcdir = buildsdir + '/' + pro.lower() + '_' + appversion
+                    rsyncapp(rsyncsrcdir, app, rsynctargetdir, configid)
 sheetname = sys.argv[1]
-# rsync_app('BBST.xlsx','Test','/home/dami/JenkinsHome/workspace/builds/releasebuilds','/home/dami/JenkinsHome/workspace/builds/releasebuilds')
-rsync_app('/home/dami/JenkinsHome/workspace/builds/releaseconfig/BBST.xlsx',sheetname,'/home/dami/JenkinsHome/workspace/builds/releasebuilds','/home/dami/JenkinsHome/workspace/builds/releasebuilds')
+allsync('/home/dami/JenkinsHome/workspace/builds/releaseconfig/BBST.xlsx',sheetname,'/home/dami/JenkinsHome/workspace/builds/releasebuilds','/home/dami/JenkinsHome/workspace/builds/releasebuilds')
+
