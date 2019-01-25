@@ -3,12 +3,10 @@
 # Author:ding
 
 import os
-import shutil
 import subprocess
 import sys
 import xlrd
 import re
-
 
 def open_excel(filename):
     try:
@@ -101,6 +99,9 @@ def allsync(filename,sheetindex='',buildsdir='',releasebuildsdir=''):
                     appversion = proinfodict[pro]['apps'][app]
                     rsyncsrcdir = buildsdir + '/' + pro.lower() + '_' + appversion
                     rsyncapp(rsyncsrcdir, app, rsynctargetdir, configid)
-sheetname = sys.argv[1]
-allsync('/home/dami/JenkinsHome/workspace/builds/releaseconfig/BBST.xlsx',sheetname,'/home/dami/JenkinsHome/workspace/builds/releasebuilds','/home/dami/JenkinsHome/workspace/builds/releasebuilds')
 
+if __name__ == '__main__':
+    sheetname = sys.argv[1]
+    allsync('/home/dami/JenkinsHome/workspace/builds/releaseconfig/BBST.xlsx',
+            sheetname,'/home/dami/JenkinsHome/workspace/builds/releasebuilds',
+            '/home/dami/JenkinsHome/workspace/builds/releasebuilds')

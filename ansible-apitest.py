@@ -2,6 +2,9 @@
 #-*- coding:utf-8 -*-
 #author:ding
 
+import sys
+import subprocess
+import os
 from ansible.parsing.dataloader import DataLoader
 from ansible.vars.manager import VariableManager
 from ansible.inventory.manager import InventoryManager
@@ -9,10 +12,6 @@ from ansible.playbook.play import Play
 from ansible.executor.task_queue_manager import TaskQueueManager
 from ansible.executor.playbook_executor import PlaybookExecutor
 from collections import namedtuple
-import sys
-import subprocess
-
-import os
 
 class AnsibleTask:
     def __init__(self,invent_file,extra_vars={},tagslist=[]):
@@ -76,7 +75,6 @@ class AnsibleTask:
         source = {'hosts': hostlist, 'gather_facts': 'no', 'tasks': [
             {'action': {'module': 'shell', 'args': command}, 'register': 'shell_out'}]}
         play = Play().load(source, variable_manager=self.variable_manager, loader=self.loader)
-
         try:
             taskqm = TaskQueueManager(
                 inventory = self.inventory,
@@ -98,7 +96,6 @@ class AnsibleTask:
                                     variable_manager=self.variable_manager,loader=self.loader,
                                     options=self.options,passwords=self.passwords)
         results=pbex.run()
-
 
 if __name__ == "__main__":
     inventory_file = './exceltable.py'

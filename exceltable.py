@@ -136,16 +136,15 @@ class Ex_inventory(object):
                 hostvardict[host] = vardict
             return (hostvardict)
 
-filename='/home/dami/JenkinsHome/workspace/builds/releaseconfig/BBST.xlsx'
-sheetname='huaweiyunUAT'
-
-exinventory = Ex_inventory(filename, sheetname)
 if __name__ == "__main__":
+    filename = '/home/dami/JenkinsHome/workspace/builds/releaseconfig/BBST.xlsx'
+    sheetname = 'huaweiyunUAT'
+    exinventory = Ex_inventory(filename, sheetname)
     if len(sys.argv) == 2 and (sys.argv[1] in ['--list','-l']):
         print(json.dumps(exinventory.groupvarslist(), indent=4))
     elif len(sys.argv) == 2 and (sys.argv[1] in ['--init', '-i']):
-        #cmd = "ansible -i exceltable.py all -m ping"
-        #subprocess.check_call(cmd, shell=True)
+        cmd = "ansible -i exceltable.py all -m ping"
+        subprocess.check_call(cmd, shell=True)
         hostslist = exinventory._hosts
         for host in hostslist:
             username = exinventory.hostvarslist()[host]['hostvars']['ansible_ssh_user']
@@ -163,7 +162,7 @@ if __name__ == "__main__":
         groupname = sys.argv[2]
         deploypath = exinventory.groupvarslist()[groupname]['vars']['deploypath']
         for i in deploypath.split('/'):
-            pattern = r'-tomcat'
+            pattern = r'tomcat'
             matchre = re.search(pattern, deploypath)
             if matchre:
                 apptype=[i,sheetname]
@@ -176,5 +175,3 @@ if __name__ == "__main__":
                         -l or --list + groupname  展示host和groupvars,
                         --host + hostname  展示hostvars,
                         -h or --help  帮助信息''')
-
-
